@@ -1,0 +1,67 @@
+services:
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── API Server ───────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - API_PORT=3000
+      - EXECUTION_TIMEOUT_MS=10000
+      - MAX_OUTPUT_BYTES=102400
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Worker ───────────────────────────────────────────────────────────────────
+  # NOTE: Docker socket mount is LOCAL DEV ONLY.
+  # Production deployments need a more secure container runtime approach.
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - EXECUTION_TIMEOUT_MS=10000
+      - MAX_OUTPUT_BYTES=102400
+      - SANDBOX_IMAGE=sandbox-python
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Web (Vite Dev Server) ────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '5173:80'
+    depends_on:
+      - api
+
+  # ── Sandbox Image Builder ───────────────────────────────────────────────────
+  sandbox-builder:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/sandbox/python:/build
+    command: docker build -t sandbox-python /build
+    profiles:
+      - setup

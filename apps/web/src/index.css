@@ -1,11 +1,40 @@
-/* ── Design System Foundation ── */
+@import 'tailwindcss';
 
-:root {
-  /* Typography */
+/* ── Theme (Tailwind CSS 4 CSS-first config) ─────────────────────────────── */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
   --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  /* Colors — dark theme */
+  /* Light mode colors (default) */
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-elevated: #f1f5f9;
+  --color-bg-surface: rgba(0, 0, 0, 0.02);
+  --color-border: #e2e8f0;
+  --color-border-active: rgba(99, 102, 241, 0.5);
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-success: #16a34a;
+  --color-warning: #ca8a04;
+  --color-error: #dc2626;
+
+  --color-editor-bg: #1e1e1e;
+
+  --animate-spin: spin 0.6s linear infinite;
+  --animate-pulse-opacity: pulse-opacity 1.5s ease-in-out infinite;
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────────────────── */
+
+.dark {
   --color-bg-primary: #0a0e17;
   --color-bg-secondary: #111827;
   --color-bg-elevated: #1a2332;
@@ -23,41 +52,28 @@
   --color-warning: #eab308;
   --color-error: #ef4444;
 
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 48px;
-
-  /* Border radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --color-editor-bg: #1e1e1e;
 }
 
-/* ── Reset ── */
-
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
+
+@keyframes pulse-opacity {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ── Base reset ──────────────────────────────────────────────────────────── */
 
 html {
-  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -66,11 +82,12 @@ body {
   font-family: var(--font-ui);
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  line-height: 1.6;
-  min-height: 100vh;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
-/* ── Scrollbar ── */
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -88,31 +105,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
-}
-
-/* ── Placeholder styles ── */
-
-.app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: var(--space-xl);
-  text-align: center;
-}
-
-.app h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: var(--space-md);
-}
-
-.app p {
-  color: var(--color-text-secondary);
-  font-size: 1rem;
 }
