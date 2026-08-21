@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { config } from '../config.js';
 
 /**
@@ -7,13 +7,13 @@ import { config } from '../config.js';
  */
 export const redis = new Redis(config.redisUrl, {
   maxRetriesPerRequest: 3,
-  retryStrategy(times) {
+  retryStrategy(times: number) {
     const delay = Math.min(times * 200, 5000);
     return delay;
   },
 });
 
-redis.on('error', (err) => {
+redis.on('error', (err: Error) => {
   console.error('[Redis] Connection error:', err.message);
 });
 

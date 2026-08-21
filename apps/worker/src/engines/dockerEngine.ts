@@ -1,7 +1,4 @@
-import { execFile } from 'node:child_process';
-import { writeFile, unlink, mkdtemp } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { spawn } from 'node:child_process';
 import { config } from '../config.js';
 import { enforceOutputLimit } from '../limits.js';
 import type { ExecutionEngine, ExecutionParams, ExecutionResult } from './types.js';
@@ -12,103 +9,98 @@ import type { ExecutionEngine, ExecutionParams, ExecutionResult } from './types.
  * Runs submitted code inside a Docker container with:
  *   --network none    (no internet access)
  *   --memory=256m     (memory cap)
- *   --user sandbox    (non-root)
- *   --read-only mount (source file)
+ *   --pids-limit=64   (fork bomb protection)
+ *   -i                (read source from stdin)
  *   --rm              (auto-remove container)
  *
- * Uses child_process.execFile (not shell) for security.
+ * Source code is piped via stdin — avoids volume mount issues
+ * when the worker runs inside a container (Docker-in-Docker).
  */
 export class DockerEngine implements ExecutionEngine {
   async execute(params: ExecutionParams): Promise<ExecutionResult> {
     const { source, timeoutMs, maxOutputBytes } = params;
-    let tempDir: string | null = null;
 
-    try {
-      // Write source to a temp file
-      tempDir = await mkdtemp(join(tmpdir(), 'sandbox-'));
-      const sourceFile = join(tempDir, 'main.py');
-      await writeFile(sourceFile, source, 'utf-8');
+    // Docker run args — pipe source via stdin using `python -c`
+    const args = [
+      'run',
+      '--rm',
+      '-i',
+      '--network',
+      'none',
+      '--memory=256m',
+      '--pids-limit=64',
+      '--entrypoint',
+      'python',
+      config.sandboxImage,
+      '-c',
+      source,
+    ];
 
-      // Build docker run arguments
-      const args = [
-        'run',
-        '--rm',
-        '--network',
-        'none',
-        '--memory=256m',
-        '--pids-limit=64',
-        '--user',
-        'sandbox',
-        '--read-only',
-        '--tmpfs',
-        '/tmp:size=16m',
-        '-v',
-        `${sourceFile}:/sandbox/main.py:ro`,
-        config.sandboxImage,
-      ];
+    const result = await this.runDocker(args, source, timeoutMs);
 
-      // Execute with timeout via AbortController
-      const result = await this.runDocker(args, timeoutMs);
+    // Enforce output limit
+    const combined = result.stdout + (result.stderr ? '\n' + result.stderr : '');
+    const { output, truncated } = enforceOutputLimit(combined, maxOutputBytes);
 
-      // Enforce output limit
-      const combined = result.stdout + (result.stderr ? '\n' + result.stderr : '');
-      const { output, truncated } = enforceOutputLimit(combined, maxOutputBytes);
-
-      return {
-        stdout: output,
-        stderr: result.stderr,
-        exitCode: result.exitCode,
-        timedOut: result.timedOut,
-        outputTruncated: truncated,
-      };
-    } finally {
-      // Always clean up temp files
-      if (tempDir) {
-        try {
-          const sourceFile = join(tempDir, 'main.py');
-          await unlink(sourceFile).catch(() => {});
-          const { rmdir } = await import('node:fs/promises');
-          await rmdir(tempDir).catch(() => {});
-        } catch {
-          // Best-effort cleanup
-        }
-      }
-    }
+    return {
+      stdout: output,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+      timedOut: result.timedOut,
+      outputTruncated: truncated,
+    };
   }
 
   private runDocker(
     args: string[],
+    _source: string,
     timeoutMs: number,
   ): Promise<{ stdout: string; stderr: string; exitCode: number; timedOut: boolean }> {
     return new Promise((resolve) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      let stdout = '';
+      let stderr = '';
+      let timedOut = false;
 
-      execFile(
-        'docker',
-        args,
-        {
-          signal: controller.signal,
-          maxBuffer: 1024 * 1024, // 1MB buffer
-          timeout: timeoutMs + 1000, // extra second as safety net
-        },
-        (error, stdout, stderr) => {
-          clearTimeout(timer);
+      const child = spawn('docker', args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
 
-          if (error && 'killed' in error && error.killed) {
-            resolve({ stdout, stderr, exitCode: -1, timedOut: true });
-            return;
-          }
+      child.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
 
-          if (error && error.name === 'AbortError') {
-            resolve({ stdout, stderr, exitCode: -1, timedOut: true });
-            return;
-          }
+      child.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
 
-          const exitCode = error && 'code' in error ? ((error.code as number) ?? 1) : 0;
-          resolve({ stdout, stderr, exitCode, timedOut: false });
-        },
-      );
+      // Timeout enforcement
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGKILL');
+      }, timeoutMs);
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve({
+          stdout,
+          stderr,
+          exitCode: code ?? 1,
+          timedOut,
+        });
+      });
+
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        resolve({
+          stdout,
+          stderr: err.message,
+          exitCode: 1,
+          timedOut: false,
+        });
+      });
+
+      // Close stdin since we pass source via -c argument
+      child.stdin.end();
     });
   }
 }

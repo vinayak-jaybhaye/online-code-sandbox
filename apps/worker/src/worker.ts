@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import {
   ExecutionStatus,
   executionKey,
@@ -25,7 +25,7 @@ import type { ExecutionEngine } from './engines/types.js';
 
 const redis = new Redis(config.redisUrl);
 
-redis.on('error', (err) => {
+redis.on('error', (err: Error) => {
   console.error('[Worker] Redis error:', err.message);
 });
 

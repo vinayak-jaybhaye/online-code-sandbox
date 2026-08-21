@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { QUEUE_NAME } from '@online-code-sandbox/shared';
 import type { ExecutionJob } from '@online-code-sandbox/shared';
 import { config } from './config.js';
@@ -12,7 +12,7 @@ const blockingClient = new Redis(config.redisUrl, {
   maxRetriesPerRequest: null, // Required for blocking commands
 });
 
-blockingClient.on('error', (err) => {
+blockingClient.on('error', (err: Error) => {
   console.error('[Queue] Redis error:', err.message);
 });
 
