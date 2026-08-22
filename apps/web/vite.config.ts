@@ -6,20 +6,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname, '../../'), '');
 
-  let webPort = 5173;
-  let apiPort = 3000;
-
-  if (mode === 'development') {
-    webPort = parseInt(env.WEB_PORT || '', 10);
-    if (isNaN(webPort)) {
-      throw new Error('Missing required environment variable: WEB_PORT');
-    }
-
-    apiPort = parseInt(env.API_PORT || '', 10);
-    if (isNaN(apiPort)) {
-      throw new Error('Missing required environment variable: API_PORT');
-    }
-  }
+  const webPort = parseInt(env.WEB_PORT || '5173', 10);
+  const apiPort = parseInt(env.API_PORT || '3000', 10);
 
   return {
     plugins: [react(), tailwindcss()],

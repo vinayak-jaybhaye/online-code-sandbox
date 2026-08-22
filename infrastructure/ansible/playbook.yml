@@ -1,0 +1,105 @@
+---
+- name: Setup Prerequisites on All Nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install dependencies
+      apt:
+        name:
+          - git
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Reset connection so docker group is picked up
+      meta: reset_connection
+
+    - name: Clone repository
+      git:
+        repo: https://github.com/vinayak-jaybhaye/online-code-sandbox.git
+        dest: /home/ubuntu/online-code-sandbox
+        version: main
+        force: yes
+      become: yes
+      become_user: ubuntu
+
+    - name: Create .env from example
+      copy:
+        src: /home/ubuntu/online-code-sandbox/.env.example
+        dest: /home/ubuntu/online-code-sandbox/.env
+        remote_src: yes
+        owner: ubuntu
+
+- name: Setup Redis Node
+  hosts: redis
+  tasks:
+    - name: Start Redis Container
+      command: docker compose up -d redis
+      args:
+        chdir: /home/ubuntu/online-code-sandbox
+
+- name: Setup API Node
+  hosts: api
+  tasks:
+    - name: Update REDIS_URL in .env
+      lineinfile:
+        path: /home/ubuntu/online-code-sandbox/.env
+        regexp: '^REDIS_URL='
+        line: 'REDIS_URL=redis://${redis_private_ip}:6379'
+
+    - name: Start API and Web services
+      command: docker compose up -d --build api web
+      args:
+        chdir: /home/ubuntu/online-code-sandbox
+
+- name: Setup Worker Nodes
+  hosts: workers
+  tasks:
+    - name: Update REDIS_URL in .env
+      lineinfile:
+        path: /home/ubuntu/online-code-sandbox/.env
+        regexp: '^REDIS_URL='
+        line: 'REDIS_URL=redis://${redis_private_ip}:6379'
+
+    - name: Start Worker service
+      command: docker compose up -d --build worker
+      args:
+        chdir: /home/ubuntu/online-code-sandbox
