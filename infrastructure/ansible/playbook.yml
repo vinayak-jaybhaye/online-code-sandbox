@@ -83,7 +83,7 @@
       lineinfile:
         path: /home/ubuntu/online-code-sandbox/.env
         regexp: '^REDIS_URL='
-        line: 'REDIS_URL=redis://${redis_private_ip}:6379'
+        line: 'REDIS_URL=redis://{{ redis_private_ip }}:6379'
 
     - name: Start API and Web services
       command: docker compose up -d --build api web
@@ -97,7 +97,7 @@
       lineinfile:
         path: /home/ubuntu/online-code-sandbox/.env
         regexp: '^REDIS_URL='
-        line: 'REDIS_URL=redis://${redis_private_ip}:6379'
+        line: 'REDIS_URL=redis://{{ redis_private_ip }}:6379'
 
     - name: Start Worker service
       command: docker compose up -d --build worker

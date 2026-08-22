@@ -21,8 +21,6 @@ services:
       - '${API_PORT}:${API_PORT}'
     env_file:
       - .env
-    environment:
-      REDIS_URL: redis://redis:6379
     depends_on:
       redis:
         condition: service_healthy
@@ -36,8 +34,6 @@ services:
       dockerfile: apps/worker/Dockerfile
     env_file:
       - .env
-    environment:
-      REDIS_URL: redis://redis:6379
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
