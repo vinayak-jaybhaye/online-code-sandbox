@@ -21,6 +21,8 @@ services:
       - '${API_PORT}:${API_PORT}'
     env_file:
       - .env
+    environment:
+      REDIS_URL: redis://redis:6379
     depends_on:
       redis:
         condition: service_healthy
@@ -34,11 +36,23 @@ services:
       dockerfile: apps/worker/Dockerfile
     env_file:
       - .env
+    environment:
+      REDIS_URL: redis://redis:6379
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       redis:
         condition: service_healthy
+      sandbox-builder:
+        condition: service_completed_successfully
+      sandbox-builder-js:
+        condition: service_completed_successfully
+      sandbox-builder-cpp:
+        condition: service_completed_successfully
+      sandbox-builder-c:
+        condition: service_completed_successfully
+      sandbox-builder-java:
+        condition: service_completed_successfully
 
   # ── Web (Vite Dev Server) ────────────────────────────────────────────────────
   web:
@@ -59,8 +73,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/sandbox/python:/build
     command: docker build -t sandbox-python /build
-    profiles:
-      - setup
 
   sandbox-builder-js:
     image: docker:cli
@@ -68,8 +80,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/sandbox/javascript:/build
     command: docker build -t sandbox-javascript /build
-    profiles:
-      - setup
 
   sandbox-builder-cpp:
     image: docker:cli
@@ -77,8 +87,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/sandbox/cpp:/build
     command: docker build -t sandbox-cpp /build
-    profiles:
-      - setup
 
   sandbox-builder-c:
     image: docker:cli
@@ -86,8 +94,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/sandbox/c:/build
     command: docker build -t sandbox-c /build
-    profiles:
-      - setup
 
   sandbox-builder-java:
     image: docker:cli
@@ -95,5 +101,3 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/sandbox/java:/build
     command: docker build -t sandbox-java /build
-    profiles:
-      - setup

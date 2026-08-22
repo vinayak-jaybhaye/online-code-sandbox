@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import { enforceOutputLimit } from '../limits.js';
 import type { ExecutionEngine, ExecutionParams, ExecutionResult } from './types.js';
 
@@ -59,9 +60,13 @@ export class DockerEngine implements ExecutionEngine {
       throw new Error(`Unsupported language: ${language}`);
     }
 
+    const containerName = `sandbox-${crypto.randomUUID()}`;
+
     // Docker run args — pipe source via stdin
     const args = [
       'run',
+      '--name',
+      containerName,
       '--rm',
       '-i',
       '--network',
@@ -71,7 +76,7 @@ export class DockerEngine implements ExecutionEngine {
       ...langConfig.args,
     ];
 
-    const result = await this.runDocker(args, source, timeoutMs);
+    const result = await this.runDocker(args, source, timeoutMs, containerName);
 
     // Enforce output limit
     const combined = result.stdout + (result.stderr ? '\n' + result.stderr : '');
@@ -90,6 +95,7 @@ export class DockerEngine implements ExecutionEngine {
     args: string[],
     _source: string,
     timeoutMs: number,
+    containerName: string,
   ): Promise<{ stdout: string; stderr: string; exitCode: number; timedOut: boolean }> {
     return new Promise((resolve) => {
       let stdout = '';
@@ -114,6 +120,7 @@ export class DockerEngine implements ExecutionEngine {
       // Timeout enforcement
       const timer = setTimeout(() => {
         timedOut = true;
+        spawn('docker', ['rm', '-f', containerName]);
         child.kill('SIGKILL');
       }, timeoutMs);
 
@@ -136,9 +143,6 @@ export class DockerEngine implements ExecutionEngine {
           timedOut: false,
         });
       });
-
-      // Close stdin since we pass source via -c argument
-      child.stdin.end();
     });
   }
 }
