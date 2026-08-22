@@ -87,7 +87,7 @@ export function App() {
   const handleLanguageChange = (newLang: string) => {
     setLanguage(newLang as Language);
   };
-  const { execute, cancel, status, output, error, isRunning } = useExecution();
+  const { execute, cancel, clearOutput, status, output, error, isRunning } = useExecution();
   const { theme, setTheme, isDark } = useTheme();
 
   const handleRun = () => {
@@ -155,7 +155,7 @@ export function App() {
 
         {/* Output panel */}
         <section className="flex flex-col overflow-hidden">
-          <OutputPanel status={status} output={output} error={error} />
+          <OutputPanel status={status} output={output} error={error} onClear={clearOutput} />
         </section>
       </main>
     </div>

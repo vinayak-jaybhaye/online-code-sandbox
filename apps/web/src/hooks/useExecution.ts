@@ -19,6 +19,7 @@ const POLL_INTERVAL_MS = 1500;
 interface UseExecutionReturn {
   execute: (language: string, source: string) => Promise<void>;
   cancel: () => Promise<void>;
+  clearOutput: () => void;
   status: ExecutionStatus | null;
   output: string | null;
   error: string | null;
@@ -106,5 +107,14 @@ export function useExecution(): UseExecutionReturn {
     }
   }, [executionId, stopPolling]);
 
-  return { execute, cancel, status, output, error, isRunning, executionId };
+  const clearOutput = useCallback(() => {
+    stopPolling();
+    setStatus(null);
+    setOutput(null);
+    setError(null);
+    setIsRunning(false);
+    setExecutionId(null);
+  }, [stopPolling]);
+
+  return { execute, cancel, clearOutput, status, output, error, isRunning, executionId };
 }

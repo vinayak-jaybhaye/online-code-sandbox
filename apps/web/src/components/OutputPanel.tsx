@@ -4,6 +4,7 @@ interface OutputPanelProps {
   status: ExecutionStatus | null;
   output: string | null;
   error: string | null;
+  onClear: () => void;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
@@ -41,8 +42,9 @@ const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
  * Output panel — displays execution status and results.
  * Renders from a growing output string so streaming works without changes.
  */
-export function OutputPanel({ status, output, error }: OutputPanelProps) {
+export function OutputPanel({ status, output, error, onClear }: OutputPanelProps) {
   const statusInfo = status ? STATUS_CONFIG[status] : null;
+  const hasContent = status || output || error;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -51,13 +53,24 @@ export function OutputPanel({ status, output, error }: OutputPanelProps) {
         <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-secondary)">
           Output
         </span>
-        {statusInfo && (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${statusInfo.classes}`}
-          >
-            {statusInfo.label}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {hasContent && (
+            <button
+              onClick={onClear}
+              title="Clear output"
+              className="cursor-pointer rounded-md border border-(--color-border) bg-(--color-bg-elevated) px-2 py-0.5 text-xs font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-border-active) hover:text-(--color-text-primary)"
+            >
+              Clear
+            </button>
+          )}
+          {statusInfo && (
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${statusInfo.classes}`}
+            >
+              {statusInfo.label}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Body */}
