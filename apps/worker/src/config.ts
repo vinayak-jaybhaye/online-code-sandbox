@@ -3,17 +3,19 @@
  * Fails fast at import time if required variables are missing.
  */
 
-function env(name: string, fallback?: string): string {
-  const value = process.env[name] ?? fallback;
+function env(name: string): string {
+  const value = process.env[name];
   if (value === undefined) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
 }
 
-function envInt(name: string, fallback: number): number {
+function envInt(name: string): number {
   const raw = process.env[name];
-  if (!raw) return fallback;
+  if (!raw) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
   const parsed = parseInt(raw, 10);
   if (Number.isNaN(parsed)) {
     throw new Error(`Environment variable ${name} must be an integer, got: "${raw}"`);
@@ -22,7 +24,7 @@ function envInt(name: string, fallback: number): number {
 }
 
 export const config = {
-  redisUrl: env('REDIS_URL', 'redis://localhost:6379'),
-  executionTimeoutMs: envInt('EXECUTION_TIMEOUT_MS', 10_000),
-  maxOutputBytes: envInt('MAX_OUTPUT_BYTES', 102_400),
+  redisUrl: env('REDIS_URL'),
+  executionTimeoutMs: envInt('EXECUTION_TIMEOUT_MS'),
+  maxOutputBytes: envInt('MAX_OUTPUT_BYTES'),
 } as const;

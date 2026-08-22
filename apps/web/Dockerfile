@@ -22,6 +22,7 @@ FROM nginx:alpine AS runtime
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 
 # Proxy /api to the API service; use variable for upstream to avoid startup crash
+ARG API_PORT
 RUN printf 'server {\n\
   listen 80;\n\
   resolver 127.0.0.11 valid=10s;\n\
@@ -30,11 +31,11 @@ RUN printf 'server {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\
   location /api {\n\
-    set $upstream http://api:3000;\n\
+    set $upstream http://api:%s;\n\
     proxy_pass $upstream;\n\
     proxy_set_header Host $host;\n\
     proxy_set_header X-Real-IP $remote_addr;\n\
   }\n\
-}\n' > /etc/nginx/conf.d/default.conf
+}\n' "$API_PORT" > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

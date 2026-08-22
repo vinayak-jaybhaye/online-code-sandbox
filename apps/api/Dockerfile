@@ -31,5 +31,6 @@ COPY --from=build /app/apps/api/node_modules apps/api/node_modules
 COPY --from=build /app/apps/api/dist apps/api/dist
 COPY --from=build /app/apps/api/package.json apps/api/package.json
 
-EXPOSE 3000
+ARG API_PORT
+EXPOSE $API_PORT
 CMD ["node", "apps/api/dist/server.js"]
