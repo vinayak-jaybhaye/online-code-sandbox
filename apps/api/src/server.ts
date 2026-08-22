@@ -4,6 +4,27 @@ import { config } from './config.js';
 import { executionsRouter } from './routes/executions.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { shutdownRedis } from './services/redisClient.js';
+import client from 'prom-client';
+import os from 'node:os';
+
+// ── Metrics Setup ────────────────────────────────────────────────────────────
+
+client.register.setDefaultLabels({
+  replica_id: os.hostname(),
+  service: 'api',
+});
+client.collectDefaultMetrics();
+
+export const executionsSubmittedTotal = new client.Counter({
+  name: 'executions_submitted_total',
+  help: 'Total number of execution jobs submitted to the queue',
+});
+
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests processed',
+  labelNames: ['method', 'route', 'status_code'],
+});
 
 const app = express();
 
@@ -12,10 +33,31 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    // Avoid tracking the metrics endpoint itself
+    if (req.path !== '/metrics') {
+      httpRequestsTotal
+        .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
+        .inc();
+    }
+  });
+  next();
+});
+
 // ── Routes ──────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/metrics', async (_req, res) => {
+  try {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+  } catch (ex) {
+    res.status(500).end(ex);
+  }
 });
 
 app.use('/api/executions', executionsRouter);

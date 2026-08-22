@@ -13,6 +13,7 @@ import type {
 } from '@online-code-sandbox/shared';
 import { redis } from './redisClient.js';
 import { enqueueExecution } from './queue.js';
+import { executionsSubmittedTotal } from '../server.js';
 
 /**
  * Transport-agnostic execution service.
@@ -70,6 +71,7 @@ export async function createExecution(body: unknown): Promise<CreateExecutionRes
   const key = executionKey(executionId);
   await redis.set(key, JSON.stringify(state), 'EX', EXECUTION_TTL_SECONDS);
   await enqueueExecution({ executionId, language, source });
+  executionsSubmittedTotal.inc();
 
   return { executionId };
 }

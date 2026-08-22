@@ -10,6 +10,56 @@ import { config } from './config.js';
 import { waitForJob, shutdownQueue } from './queue.js';
 import { DockerEngine } from './engines/dockerEngine.js';
 import type { ExecutionEngine } from './engines/types.js';
+import { QUEUE_NAME } from '@online-code-sandbox/shared';
+import express from 'express';
+import client from 'prom-client';
+import os from 'node:os';
+
+// ── Metrics Setup ────────────────────────────────────────────────────────────
+
+client.register.setDefaultLabels({
+  replica_id: os.hostname(),
+  service: 'worker',
+});
+client.collectDefaultMetrics();
+
+const executionsProcessedTotal = new client.Counter({
+  name: 'executions_processed_total',
+  help: 'Total number of execution jobs processed',
+  labelNames: ['status'],
+});
+
+const executionDurationSeconds = new client.Histogram({
+  name: 'execution_duration_seconds',
+  help: 'Duration of execution in seconds (including docker spinup)',
+  buckets: [0.1, 0.5, 1, 2, 5, 10], // Bucket limits in seconds
+});
+
+// We can asynchronously collect the queue length when Prometheus scrapes
+new client.Gauge({
+  name: 'queue_depth',
+  help: 'Number of jobs in the execution queue',
+  async collect() {
+    try {
+      this.set(await redis.llen(QUEUE_NAME));
+    } catch {
+      this.set(0);
+    }
+  },
+});
+
+const metricsApp = express();
+metricsApp.get('/metrics', async (_req, res) => {
+  try {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+  } catch (ex) {
+    res.status(500).end(ex);
+  }
+});
+const metricsServer = metricsApp.listen(3001, '0.0.0.0', () => {
+  console.log('[Worker] Metrics server listening on port 3001');
+});
 
 /**
  * Worker main loop.
@@ -52,14 +102,18 @@ async function processJob(job: ExecutionJob): Promise<void> {
   const { executionId, language, source } = job;
   console.log(`[Worker] Processing job ${executionId} (${language})`);
 
+  const endTimer = executionDurationSeconds.startTimer();
+
   // Check if already cancelled before starting
   const state = await getState(executionId);
   if (!state) {
     console.log(`[Worker] Job ${executionId} — state not found (expired?), skipping.`);
+    endTimer();
     return;
   }
   if (isTerminalStatus(state.status)) {
     console.log(`[Worker] Job ${executionId} — already ${state.status}, skipping.`);
+    endTimer();
     return;
   }
 
@@ -101,6 +155,9 @@ async function processJob(job: ExecutionJob): Promise<void> {
   state.completedAt = new Date().toISOString();
   await updateState(state);
 
+  executionsProcessedTotal.labels(state.status).inc();
+  endTimer();
+
   console.log(`[Worker] Job ${executionId} — ${state.status}`);
 }
 
@@ -130,6 +187,7 @@ async function main(): Promise<void> {
 async function shutdown(signal: string): Promise<void> {
   console.log(`\n[Worker] ${signal} received — shutting down...`);
   running = false;
+  metricsServer.close();
   await shutdownQueue();
   await redis.quit();
   process.exit(0);

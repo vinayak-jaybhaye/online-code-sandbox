@@ -54,6 +54,24 @@ services:
       sandbox-builder-java:
         condition: service_completed_successfully
 
+  # ── Prometheus ───────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  # ── Grafana ──────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - '3002:3000'
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
   # ── Web (Vite Dev Server) ────────────────────────────────────────────────────
   web:
     build:
