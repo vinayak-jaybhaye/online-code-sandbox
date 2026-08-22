@@ -13,6 +13,8 @@
     "@monaco-editor/react": "^4.6.0",
     "@online-code-sandbox/shared": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
+    "monaco-editor": "0.52.0",
+    "monaco-vim": "^0.4.4",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "tailwindcss": "^4.3.3"

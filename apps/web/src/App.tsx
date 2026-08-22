@@ -76,6 +76,7 @@ public class Main {
 export function App() {
   const [language, setLanguage] = useState<Language>('python');
   const [codeByLang, setCodeByLang] = useState<Record<Language, string>>(DEFAULT_CODE);
+  const [vimMode, setVimMode] = useState(false);
 
   const code = codeByLang[language];
 
@@ -121,6 +122,17 @@ export function App() {
               onChange={handleLanguageChange}
               disabled={isRunning}
             />
+            <button
+              onClick={() => setVimMode((v) => !v)}
+              title="Toggle Vim Mode"
+              className={`flex cursor-pointer items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                vimMode
+                  ? 'border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)'
+                  : 'border-(--color-border) bg-(--color-bg-elevated) text-(--color-text-secondary) hover:border-(--color-border-active) hover:text-(--color-text-primary)'
+              }`}
+            >
+              Vim
+            </button>
             <div className="ml-auto">
               <RunButton
                 onClick={handleRun}
@@ -131,7 +143,13 @@ export function App() {
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
-            <CodeEditor value={code} onChange={setCode} language={language} isDark={isDark} />
+            <CodeEditor
+              value={code}
+              onChange={setCode}
+              language={language}
+              isDark={isDark}
+              vimMode={vimMode}
+            />
           </div>
         </section>
 
