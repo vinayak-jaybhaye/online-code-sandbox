@@ -25,6 +25,4 @@ export const config = {
   redisUrl: env('REDIS_URL', 'redis://localhost:6379'),
   executionTimeoutMs: envInt('EXECUTION_TIMEOUT_MS', 10_000),
   maxOutputBytes: envInt('MAX_OUTPUT_BYTES', 102_400),
-  /** Docker image name for the Python sandbox. */
-  sandboxImage: env('SANDBOX_IMAGE', 'sandbox-python'),
 } as const;

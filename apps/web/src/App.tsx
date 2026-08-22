@@ -7,8 +7,11 @@ import { ThemeToggle } from './components/ThemeToggle.js';
 import { useExecution } from './hooks/useExecution.js';
 import { useTheme } from './hooks/useTheme.js';
 
-const LANGUAGES = ['python'] as const;
-const DEFAULT_CODE = `# Welcome to Code Sandbox!
+const LANGUAGES = ['python', 'javascript', 'cpp', 'c', 'java'] as const;
+type Language = (typeof LANGUAGES)[number];
+
+const DEFAULT_CODE: Record<Language, string> = {
+  python: `# Welcome to Code Sandbox!
 # Write your Python code here and click Run.
 
 def greet(name):
@@ -16,7 +19,54 @@ def greet(name):
 
 print(greet("World"))
 print("2 + 2 =", 2 + 2)
-`;
+`,
+  javascript: `// Welcome to Code Sandbox!
+// Write your JavaScript code here and click Run.
+
+function greet(name) {
+    return \`Hello, \${name}! 👋\`;
+}
+
+console.log(greet("World"));
+console.log("2 + 2 =", 2 + 2);
+`,
+  cpp: `// Welcome to Code Sandbox!
+// Write your C++ code here and click Run.
+
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+int main() {
+    string name = "World";
+    cout << "Hello, " << name << "! 👋" << endl;
+    cout << "2 + 2 = " << 2 + 2 << endl;
+    return 0;
+}
+`,
+  c: `// Welcome to Code Sandbox!
+// Write your C code here and click Run.
+
+#include <stdio.h>
+
+int main() {
+    printf("Hello, World! 👋\\n");
+    printf("2 + 2 = %d\\n", 2 + 2);
+    return 0;
+}
+`,
+  java: `// Welcome to Code Sandbox!
+// Write your Java code here and click Run.
+
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World! 👋");
+        System.out.println("2 + 2 = " + (2 + 2));
+    }
+}
+`,
+};
 
 /**
  * Root application component.
@@ -24,8 +74,18 @@ print("2 + 2 =", 2 + 2)
  * No business logic here — just layout and prop passing.
  */
 export function App() {
-  const [code, setCode] = useState(DEFAULT_CODE);
-  const [language, setLanguage] = useState<string>('python');
+  const [language, setLanguage] = useState<Language>('python');
+  const [codeByLang, setCodeByLang] = useState<Record<Language, string>>(DEFAULT_CODE);
+
+  const code = codeByLang[language];
+
+  const setCode = (newCode: string) => {
+    setCodeByLang((prev) => ({ ...prev, [language]: newCode }));
+  };
+
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang as Language);
+  };
   const { execute, cancel, status, output, error, isRunning } = useExecution();
   const { theme, setTheme, isDark } = useTheme();
 
@@ -58,15 +118,17 @@ export function App() {
             <LanguageSelector
               languages={LANGUAGES}
               selected={language}
-              onChange={setLanguage}
+              onChange={handleLanguageChange}
               disabled={isRunning}
             />
-            <RunButton
-              onClick={handleRun}
-              onCancel={cancel}
-              isRunning={isRunning}
-              disabled={!code.trim()}
-            />
+            <div className="ml-auto">
+              <RunButton
+                onClick={handleRun}
+                onCancel={cancel}
+                isRunning={isRunning}
+                disabled={!code.trim()}
+              />
+            </div>
           </div>
           <div className="flex-1 overflow-hidden">
             <CodeEditor value={code} onChange={setCode} language={language} isDark={isDark} />

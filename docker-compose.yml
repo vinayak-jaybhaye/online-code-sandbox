@@ -39,7 +39,6 @@ services:
       - REDIS_URL=redis://redis:6379
       - EXECUTION_TIMEOUT_MS=10000
       - MAX_OUTPUT_BYTES=102400
-      - SANDBOX_IMAGE=sandbox-python
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -63,5 +62,41 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/sandbox/python:/build
     command: docker build -t sandbox-python /build
+    profiles:
+      - setup
+
+  sandbox-builder-js:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/sandbox/javascript:/build
+    command: docker build -t sandbox-javascript /build
+    profiles:
+      - setup
+
+  sandbox-builder-cpp:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/sandbox/cpp:/build
+    command: docker build -t sandbox-cpp /build
+    profiles:
+      - setup
+
+  sandbox-builder-c:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/sandbox/c:/build
+    command: docker build -t sandbox-c /build
+    profiles:
+      - setup
+
+  sandbox-builder-java:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/sandbox/java:/build
+    command: docker build -t sandbox-java /build
     profiles:
       - setup

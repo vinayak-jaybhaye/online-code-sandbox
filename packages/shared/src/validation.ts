@@ -1,5 +1,5 @@
 /** Languages currently supported for execution. Add new languages here. */
-const SUPPORTED_LANGUAGES = ['python'] as const;
+const SUPPORTED_LANGUAGES = ['python', 'javascript', 'cpp', 'c', 'java'] as const;
 
 /** Maximum source code size in bytes. */
 const MAX_SOURCE_BYTES = 65536; // 64KB

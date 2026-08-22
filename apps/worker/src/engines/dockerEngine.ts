@@ -1,7 +1,41 @@
 import { spawn } from 'node:child_process';
-import { config } from '../config.js';
 import { enforceOutputLimit } from '../limits.js';
 import type { ExecutionEngine, ExecutionParams, ExecutionResult } from './types.js';
+
+const LANGUAGE_CONFIG: Record<string, { image: string; args: string[] }> = {
+  python: {
+    image: 'sandbox-python',
+    args: ['--entrypoint', 'python', 'sandbox-python'],
+  },
+  javascript: {
+    image: 'sandbox-javascript',
+    args: ['--entrypoint', 'node', 'sandbox-javascript'],
+  },
+  cpp: {
+    image: 'sandbox-cpp',
+    args: [
+      '--entrypoint',
+      'bash',
+      'sandbox-cpp',
+      '-c',
+      'cat > main.cpp && g++ -O2 -std=c++20 main.cpp -o main && ./main',
+    ],
+  },
+  c: {
+    image: 'sandbox-c',
+    args: [
+      '--entrypoint',
+      'bash',
+      'sandbox-c',
+      '-c',
+      'cat > main.c && gcc -O2 -std=c11 main.c -o main && ./main',
+    ],
+  },
+  java: {
+    image: 'sandbox-java',
+    args: ['--entrypoint', 'bash', 'sandbox-java', '-c', 'cat > code.java && java code.java'],
+  },
+};
 
 /**
  * Docker-based execution engine.
@@ -18,9 +52,14 @@ import type { ExecutionEngine, ExecutionParams, ExecutionResult } from './types.
  */
 export class DockerEngine implements ExecutionEngine {
   async execute(params: ExecutionParams): Promise<ExecutionResult> {
-    const { source, timeoutMs, maxOutputBytes } = params;
+    const { source, timeoutMs, maxOutputBytes, language } = params;
 
-    // Docker run args — pipe source via stdin using `python -c`
+    const langConfig = LANGUAGE_CONFIG[language];
+    if (!langConfig) {
+      throw new Error(`Unsupported language: ${language}`);
+    }
+
+    // Docker run args — pipe source via stdin
     const args = [
       'run',
       '--rm',
@@ -29,11 +68,7 @@ export class DockerEngine implements ExecutionEngine {
       'none',
       '--memory=256m',
       '--pids-limit=64',
-      '--entrypoint',
-      'python',
-      config.sandboxImage,
-      '-c',
-      source,
+      ...langConfig.args,
     ];
 
     const result = await this.runDocker(args, source, timeoutMs);
@@ -64,6 +99,9 @@ export class DockerEngine implements ExecutionEngine {
       const child = spawn('docker', args, {
         stdio: ['pipe', 'pipe', 'pipe'],
       });
+
+      child.stdin.write(_source);
+      child.stdin.end();
 
       child.stdout.on('data', (data: Buffer) => {
         stdout += data.toString();
