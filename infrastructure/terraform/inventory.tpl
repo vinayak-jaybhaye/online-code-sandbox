@@ -11,4 +11,3 @@ ${ip} ansible_user=ubuntu redis_private_ip=${redis_private_ip}
 
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-ansible_ssh_private_key_file='~/keys/sandbox-key.pem'
